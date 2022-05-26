@@ -16,9 +16,16 @@ func SignUp(c *fiber.Ctx) error {
 		return err
 	}
 
-	// force MongoDB to generate an ID
-	user.ID = ""
-	user.SetCredentials()
+	// Check if user already exists
+	filter := bson.M{"email": user.Email}
+	if result := repo.Mongo.Database.Collection("users").FindOne(context.TODO(), filter); result.Err() == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"message": "User already exists",
+		})
+	}
+
+	// Prepare to insert user
+	user.PrepareToSave()
 
 	result, err := repo.Mongo.Database.Collection("users").InsertOne(context.TODO(), user)
 	if err != nil {
@@ -46,7 +53,7 @@ func SignIn(c *fiber.Ctx) error {
 		return err
 	}
 
-	if !user.CheckCredentials(userCredentials["password"]) {
+	if !user.CheckPassword(userCredentials["password"]) {
 		return c.Status(401).JSON(fiber.Map{"message": "Invalid credentials"})
 	}
 

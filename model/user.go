@@ -30,7 +30,15 @@ type User struct {
 	Credentials UserCredentials `json:"-" bson:"credentials"`
 }
 
-func (u *User) SetCredentials() {
+func (u *User) PrepareToSave() {
+	// force MongoDB to generate an ID
+	u.ID = ""
+
+	// Hash password
+	u.hashPassword()
+}
+
+func (u *User) hashPassword() {
 	// Generate salt
 	salt := make([]byte, SALT_LENGTH)
 	if _, err := rand.Read(salt); err != nil {
@@ -51,7 +59,7 @@ func (u *User) SetCredentials() {
 	u.Credentials.Hash = base64.URLEncoding.EncodeToString(dk)
 }
 
-func (u *User) CheckCredentials(password string) bool {
+func (u *User) CheckPassword(password string) bool {
 	// Decode salt
 	salt, err := base64.URLEncoding.DecodeString(u.Credentials.Salt)
 	if err != nil {
